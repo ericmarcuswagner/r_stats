@@ -1,59 +1,71 @@
 ---
-title: "stats_tests"
+title: "Statistics in R"
 output: html_document
 date: "2026-06-03"
 ---
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Mean & Group Comparison
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### One-Sample t-Test
 * Compares the mean of a single group to a known or hypothesized value
 * Assumes continuous data, independent observations, and approximately normal distribution of the data (or n>30)
+* Example: Test if systolic blood pressure (mmHg) of treatment cohort differs from the healthy population norm of 120 mmHg
 
 ```{r}
-x <- rnorm(30, 72, 10)
+patient_sbp <- rnorm(40, 125, 10)
 
-t.test(x, mu = 70)
+t.test(patient_sbp, mu = 120)
 ```
 
 ### Two-Sample t-Test
 * Compares the means of two independent groups
-* Assumes continuous dependent variable, independent groups, normal distribution within each group, and homogeneity of variances (though Welch't t-test adjusts for unequal variances)
+* Assumes continuous dependent variable, independent groups, normal distribution within each group, and homogeneity of variances (though Welch's t-test adjusts for unequal variances)
+* Example: Compare the mean reduction in LDL cholesterol (mg/dL) between a treatment group and placebo group
 
 ```{r}
-a <- rnorm(30, 75, 8)
-b <- rnorm(30, 71, 9)
+treatment <- rnorm(30, 35, 10)
+placebo <- rnorm(30, 5, 8)
 
-t.test(a, b, var.equal = TRUE) 
-t.test(a, b) # Welch, default
+t.test(treatment, placebo) # Welch, default
+# t.test(treatment, placebo, var.equal = TRUE) if variances are equal
 ```
 
 ### Paired t-Test
 * Compares the means of the same group at two different times or matched pairs
 * Assumes continuous data, dependent/paired observations, and normal distribution of the differents between the paired values
+* Example: Compare the mean blood glucose levels (mg/dL) of diabetic patients measured before eating a meal vs two hours after
 
 ```{r}
-a <- rnorm(25, 80, 5)
-b <- a + rnorm(25, 15, 4)
+pre <- rnorm(35, 110, 15)
+post <- pre + rnorm(35, 45, 12)
 
-t.test(a, b, paired = TRUE)
+t.test(pre, post, paired = TRUE)
 ```
 
 ### One-Way ANOVA (Analysis of Variance)
 * Compares the means of three or more independent groups
 * Assumes continuous dependent variable, independent observations, normal distribution within each group, and homogeneity of variances across groups
+* Example: Compare the average weight loss (lbs) among obese patients randomly assigned to three different diets after 6 months
 
 ```{r}
+keto <- rnorm(25, 18, 5)
+low_fat <- rnorm(25, 10, 5)
+med <- rnorm(25, 14, 5)
+
 df <- data.frame(
-  y <- c(rnorm(20, 85, 5), rnorm(20, 88, 50), rnorm(20, 78, 5)),
-  x <- factor(rep(c('A', 'B', 'C'), each = 20))
+  weight_loss = c(keto, low_fat, med),
+  diet = factor(rec(c('Keto', 'Low Fat', 'Mediterranean'), each = 25))
 )
 
-fit <- aov(y ~ x, data = df)
+fit <- aov(weight_loss ~ diet, data = df)
 summary(fit)
 TukeyHSD(fit) # CI
 ```
@@ -61,88 +73,116 @@ TukeyHSD(fit) # CI
 ### Two-Way ANOVA (with Interaction)
 * Evaluates the effects of two categorical independent variables (factors) on a continuous dependent variable, as well as the interaction between them
 * Assumes independent observations, normal distribution of residuals, and homogeneity of variances
+* Example: Evaluate the combined effects of drug dosage and biological sex on the average reduction in chronic pain scores
 
 ```{r}
 df <- data.frame(
-  y = c(rnorm(15, 50, 4), rnorm(15, 55, 4), rnorm(15, 45, 4), rnorm(15, 60, 4)),
-  x = factor(rep(c('A', 'B'), each = 30)),
-  z = factor(rep(rep(c('Low', 'High'), each = 15), 2))
+  pain_reduction = c(rnorm(15, 3.1, 1.0), # Male, Low Dose
+  pain_reduction = c(rnorm(15, 5.5, 1.2), # Male, High Dose
+  pain_reduction = c(rnorm(15, 2,8, 0.9), # Female, Low Dose
+  pain_reduction = c(rnorm(15, 4.8, 1.1), # Female, High Dose
+  dosage = factor(rep(c('Low', 'High'), each = 30)),
+  sex = factor(rep(rep(c('Male', 'Female'), each = 15), 2))
 )
 
-fit = aov(y ~ x * z, data = df)
+fit = aov(pain_reduction ~ dosage * sex, data = df)
 summary(fit)
 ```
 
 ### Analysis of Covariance (ANCOVA)
 * Compares the means of a continuous dependent variable across levels of a categorical independent variable while controlling for the effect of a continuous covariate
 * Assumes homogeneity of regression slopes and normality of residuals and homoscedasticity
+* Comparing lung capacity (FEV1) across three asthma groups while controlling for baseline lung capacity (covariate)
 
 ```{r}
+library(car)
 
+n <- 30
+baseline <- rnorm(3 * n, 3.2, 0.4)
+group <- factor(rep(c('A', 'B', 'C'), each = n))
+post_fev1 <- 0.85 * baseline +
+             ifelse(group == 'B', 0.6,
+                    ifelse(group == 'A', 0.2, 0.1)) +
+             rnorm(3 * n, 0, 0.25)
+df <- data.frame(post_fev1, baseline, group)
+
+fit <- aov(post_fev1 ~ baseline + group, data = df)
+Anova(fit, type = 'III')
 ```
 
 ### Wilcoxon Signed-Rank Test 
 * Non-parametric alternative to the paired t-test or one sample t-test
 * Compares medians of paired/dependent groups
 * Assumes the distribution of differences between pairs is symmetric
+* Example: Comparing pain scores of chronic pain before and after receiving physical therapy treatment
 
 ```{r}
-a <- sample(1:5, 30, replace = TRUE, prob = c(0.3, 0.4, 0.2, 0.05, 0.05))
-b <- sample(1:5, 30, replace = TRUE, prob = c(0.05, 0.05, 0.2, 0.4, 0.3))
+pre <- sample(6:10, 30, replace = TRUE)
+post <- pre - sample(1:4, 30, replace = TRUE, prob = c(0.1, 0.4, 0.3, 0.2))
+post <- pmax(, 1)
 
-wilcox.test(a, b, paired = TRUE, exact = FALSE)
+wilcox.test(pre, post, paired = TRUE, exact = FALSE)
 ```
 
 ### Wilcoxon Rank-Sum / Mann-Whitney U Test
 * Non-parametric alternative to the independent two-sample t-test
 * Compares the distributions (often interpreted as medians) of two independent groups
 * Assumes independent groups, ordinal or continuous data
+* Example: Comparing the hospital length of stay between patients who underwent laparoscopic surgery vs open surgery
 
 ```{r}
-con <- rpois(20, 8)
-trt <- rpois(20, 5)
+lap <- rpois(25, 3)
+open <- rpois(25, 7)
 
-wilcox.test(con, trt, paired = FALSE, exact = FALSE)
+wilcox.test(lap, open, paired = FALSE, exact = FALSE)
 ```
 
 ### Kruskal-Wallis Test
 * Non-parametric to the One-way ANOVA
 * Compares the medians/distributions across three or more independent groups
 * Assumes ordinal or continuous dependent variable, independent groups
+* Cionare fatigue ratings among nurses across three different shifts
 
 ```{r}
+n <- 25
 df <- data.frame(
-  y = c(sample(1:5, 25, replace = TRUE, prob = c(0.1, 0.1, 0.2, 0.4, 0.2)),
-             sample(1:5, 25, replace = TRUE, prob = c(0.4, 0.3, 0.2, 0.05, 0.05)),
-             sample(1:5, 25, replace = TRUE, prob = c(0.05, 0.05, 0.1, 0.4, 0.4)),
-             sample(1:5, 25, replace = TRUE, prob = c(0.2, 0.2, 0.2, 0.2, 0.2))),
-  x = factor(rep(c("A", "B", "C", "D"), each = 25))
+  fatigue = c(sample(1:5, n, replace = TRUE, prob = c(0.1, 0.3, 0.4, 0.1, 0.1)),    # Day
+              sample(1:5, n, replace = TRUE, prob = c(0.05, 0.1, 0.25, 0.4, 0.2)),  # Night
+              sample(1:5, n, replace = TRUE, prob = c(0.2, 0.4, 0.2, 0.15, 0.05))), # Evening
+  shift = factor(rep(c('day', 'night', 'evening'), each = n))
 )
 
-kruskal.test(y ~ x, data = df)
+kruskal.test(fatigue ~ shift, data = df)
 ```
 
 ### Friedman Test
 * Non-parametric alternative to the repeated measures ANOVA
 * Compares three or more paired/matched groups
 * Assumes matched groups, ordinal or continuous dependent variable, and consistent blocks across conditions
+* Evaluate mobility scores of patients after surgery at three sequential months
 
 ```{r}
 n <- 15
 df <- data.frame(
-  y <- c(rnorm(n, 70, 5), rnorm(75, 5), rnorm(65, 5)),
-  x <- factor(rep(c('A', 'B', 'C'), each = n)),
-  z <- factor(rep(1:n, times = 3))
+  mobility = c(sample(2:6, n, replace = TRUE),   # Month 1
+               sample(4:8, n, replace = TRUE),   # Month 2
+               sample(6:10, n, replace = TRUE)), # Month 3
+  month = factor(rep(c(1, 2, 3), each = n)),
+  patient_id = factor(rep(1:n, times = 3))
 )
 
-friedman.test(y ~ x | z, data = df)
+friedman.test(mobility ~ month | patient_id, data = df)
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Categorical Data
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### Chi-Square Test of Independence
 * Determines association between two categorical variables
@@ -183,13 +223,15 @@ friedman.test(y ~ x | z, data = df)
 
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Correlation
 
-# ------------------------------------------------------------------------------
 
-# Correlation
+
+
 
 ### Pearson's Correlation
 * Measures linear relationship between two continuous variables
@@ -215,11 +257,15 @@ friedman.test(y ~ x | z, data = df)
 
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Diagnostic Tests
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### Shapiro-Wilk Normality Test
 * Tests whether the sample comes from a normally distributed population
@@ -297,11 +343,15 @@ fit <- lm(y ~ x1 + x2 + x3)
 vif(fit)
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Regression
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### Simple Linear Regression
 * Models the linear relationship between one continuous dependent variables and one independent variable
@@ -411,11 +461,15 @@ library(glmnet)
 
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Survival Analysis
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### Kaplan-Meier Estimator
 * Non-parametric statistic used to estimate the survival function from lifetime data
@@ -484,11 +538,15 @@ status <- rbinom(100, 1, 0.8)
 fit <- survreg(Surv(time, status) ~ x, dist = 'weibull')
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Supervised Machine Learning
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### Decision Trees
 * Non-parametric model that splits data into branch-like structures based on feature values
@@ -586,11 +644,15 @@ fit <- knn(train = df[train_ind, ],
 table(Actual = y[test_ind], Predicted = fit)
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Unsupervised Machine Learning
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### K-Means Clustering
 * Partitions data into pre-defined, non-overlapping clusters by minimizing the sum of squared distances between data points and their cluster
@@ -643,11 +705,15 @@ summary(fit)
 biplot(fit)
 ```
 
-# ------------------------------------------------------------------------------
+
+
+
 
 # Time-Series
 
-# ------------------------------------------------------------------------------
+
+
+
 
 ### Auto-Regressive Integrated Moving Average (ARIMA)
 * Forecasts univariate time-series data by modeling auto-regressive (AR) components, differencing (I) to achieve stationarity, and moving average (MA) errors
