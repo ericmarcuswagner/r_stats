@@ -187,40 +187,69 @@ friedman.test(mobility ~ month | patient_id, data = df)
 ### Chi-Square Test of Independence
 * Determines association between two categorical variables
 * Assumes mutually exclusive categories, independent observations, and that the expected frequency in cell each cell is >5
+* Example: Determining whether there is an association between smoking status and occurrence of lung disease
 
 ```{r}
+smoke <- sample(c('smoker', 'non_smoker'), 300, replace = TRUE, prob = c(0.3, 0.7))
+prob <- fielse(smoke == 'smoker', 0.4, 0.05)
+lung <- ifelse(runif(300) < prob, 'yes', 'no')
+tab <- table(smoke, lung)
 
+chisq.test(tab)
 ```
 
 ### Chi-Square Goodness-of-Fit
 * Tests whether an observed categorical variable distribution matches a hypothesized distribution
 * Assumes categorical data, mutually exclusive categories, independent observations, and counts in each group >5
-```{r}
+* Example: Checking if the genetic inheritance ratio matches the expected Mendelian ratio of 1:2:1
 
+```{r}
+prob <- c(0.25, 0.5, 0.25)
+obs <- c(55, 95, 50)
+
+chisq.test(obs, prob)
 ```
 
 ### Fisher's Exact Test
 * Determines association between two categorical variables when sample sizes are small
 * Calculates exact probability instead of approximation
+* Determining if a treatment causes a rare side effect
 
 ```{r}
+mat <- matrix(c(2, 13,  # Treatment Group: 2Y 13N
+                0, 15), # Placebo Group:   0Y 15N
+              nrow = 2, byrow = TRUE,
+              dimnames = list(cohort = c('treatment', 'placebo'),
+                              side_effect = c('yes', 'no)))
 
+fisher.test(mat)
 ```
 
 ### McNemar's Test
 * Non-parametric test for binary paired data, assessing whether there is a change in proportion before and after intervention
 * Assumes continuous variables, linear relationship, independent observations, homoscedasticity, and that both variables are normally distributed
+* Example: Comparing the diagnostic accuracy of diagnostic blood test before and after recalibration
 
 ```{r}
+mat <- matrix(c(60, 15,  # Pass 1st: 60 Pass 2nd, 12 Fail 2nd
+                5, 20)   # Fail 1st: 5  Pass 2nd, 20 Fail 2nd
+              nrow = 2, byrow = TRUE,
+              dimnames = list(pre = c('pass', 'fail'),
+                              post = c('pass', 'fail')))
 
+mcnemar.test(mat)
 ```
 
 ### Two-Sample Test for Equality of Proportions
 * Compares the proportion of success between two independent groups
 * Assumes independent random samples and counts in each group >5
+* Example: Comparing the childhood vaccination rate between clinics in rural vs urban areas
 
 ```{r}
+vacc <- c(310, 245)
+total <- c(350, 320)
 
+prop.test(vacc, total)
 ```
 
 
@@ -236,25 +265,38 @@ friedman.test(mobility ~ month | patient_id, data = df)
 ### Pearson's Correlation
 * Measures linear relationship between two continuous variables
 * Assumes continuous variables, linear relationship, independent observations, homoscedasticity, and that both variables are normally distributed
+* Example: Assessing the linear relationship between caloric intake and BMI
 
 ```{r}
+cal <- rnorm(60, 2500, 400)
+bmi <- 18 + 0.003 * cal + rnorm(60, 0, 2.5)
 
+cor.test(cal, bmi, method = 'pearson')
 ```
 
 ### Spearman's Rank Correlation
 * Assesses the relationship between two variables
 * Ideal for ordinal or continuous data with non-linaer monotonic curves
+* Assessing the monotonic relationship between cortisol levels and stress scores
 
 ```{r}
+cortisol <- runif(75, 100, 600)
+stress <- 15 * log(cortisol) - 40 + rnorm(75, 0, 5)
+stress <- pmin(pmax(round(stress), 1), 100)
 
+cor.test(cortisol, stress, method = 'spearman', exact = FALSE)
 ```
 
 ### Kendall's Tau
 * Non-parametric correlation test used to measure the ordinal association between two variables
 * Preferred when the sample size is small and there are many tied ranks
+* Testing the level of agreement between two radiologistcs ranking joint damage severity
 
 ```{r}
+a <- c(2, 4, 5, 5, 7, 8, 8, 9, 9, 10, 10, 10)
+b <- c(3, 4, 4, 6, 6, 8, 9, 8, 10, 9, 10, 10)
 
+cor.test(a, b, method = 'kendall', exact = FALSE)
 ```
 
 
@@ -270,76 +312,90 @@ friedman.test(mobility ~ month | patient_id, data = df)
 ### Shapiro-Wilk Normality Test
 * Tests whether the sample comes from a normally distributed population
 * Sensitive to large sample sizes
+* Example: Testing whether Blood Ura Nitrogen levels are normally distributed
 
 ```{r}
-norm <- rnorm(50, 100, 15)
-skew <- rexp(50, 0.1)
+normal <- rnorm(50, 15, 3))
+skewed <- rexp(50, 0.05) + 5
 
-shapiro.test(norm)
-shapiro.test(skew)
+shapiro.test(normal)
+shapiro.test(skewed)
 ```
 
 ### Kolmogorov-Smirnov (K-S) Test
 * Non-parametric test used to compare a continuous sample distribution against a reference probability distribution or two continuous sample distributions to each other
 * Assumes continuous data and independent observations
+* Example: Comparing the distribution of step counts against reference normal distribution
 
 ```{r}
-x <- rnorm(100, 0, 1)
-ks.test(x, 'pnorm', mean(x), sd(x))
+steps  <- rnorm(100, 8000, 1500)
+stand_steps <- (steps - mean(steps)) / sd(steps)
+
+ks.test(stand_steps, 'pnorm')
 ```
 
 ### Levene's Test
 * Tests whether the variances across two or more groups are equal
 * Robust to departures from normality
+* Verifying if the variance of body temperature is equal across three groups of fever patients with different treatment brands
 
 ```{r}
 library(car)
 
-a <- rnorm(50, 10, 2)
-b <- rnorm(50, 10, 8)
+a <- rnorm(30, 99.5, 0.4)
+b <- rnorm(30, 99.2, 0.8)
+c <- rnorm(30, 99.8, 1.5)
 
 df <- data.frame(
-  Value = c(a, b),
-  Group = factor(rep(c('A', 'B'), each = 50))
+  temp = c(a, b, c),
+  treatment = factor(rep(c('Brand_A', 'Brand_B', 'Brand_C'), each = 30))
 )
 
-leveneTest(Value ~ Group, data = df)
+leveneTest(temp ~ treatment, data = df)
 ```
 
-### F Test for Equality of Two Variances
+### F-Test for Equality of Two Variances
 * Compares the variances of two independent groups
 * Assumes both groups are normally distributed
+* Example: Determining if the measurement variance in systolic blood pressure readings is equal between two brands of cuffs
 
 ```{r}
+a <- rnorm(40, 130, 4.5)
+b <- rnorm(40, 130, 8.2)
 
+var.test(a, b)
 ```
 
 ### Breusch-Pagan Test
 * Tests whether the residuals of a linear regression model are homoscedastic
+* Example: Verifying the variance of the residuals in a model predicting estimated glomerular filtration rate (eGFR) remain constant across all ages
 
 ```{r}
 library(lmtest)
 
-x <- seq(1, 100, length.out = 100)
-y <- 5 + 2 * x + rnorm(100, 0, x * 0.5)
+age <- seq(20, 85, length.out = 120)
+egfr <- 120 - 0.5 * age + rnorm(120, 0, age * 0.25)
+df <- data.frame(age, egfr)
+fit <- lm(egfr ~ age, data = df)
 
-fit <- lm(y ~ x)
 bptest(fit)
 ```
 
 ### Variance Inflation Factor (VIF)
 * Measures severity of multicollinearity
 * 1 = none, >5 = moderate, >10 = severe
+* Example: Ensuring BMI, waist circumference, and body fat percentage are not causing severe multicollinearity in predicting cardiovascular disease risk
 
 ```{r}
 library(car)
 
-x1 <- rnorm(100, 50, 10)
-x2 <- x1 + rnorm(100, 0, 2)
-x3 <- rnorm(100, 10, 5)
-y <- 15 + 0.5 * x1 - 0.2 * x2 + 1.2 * x3 + rnorm(100, 0, 3)
+bmi <- rnorm(100, 26, 4.5)
+waist_cm <- 3 * bmi + rnorm(100, 5, 3)
+body_fat_pct <- 1.2 * bmi + rnorm(100, 2, 2)
+cvd <- 0.5 * bmi + 0.1 * waist_cm + 0.2 * body_fat_pct + rnorm(100, 0, 2)
+df <- data.frame(cvd, bmi, waist_cm, body_fat_pct)
+fit <- lm(cvd ~ bmi + waist_cm + body_fat_pct, data = df)
 
-fit <- lm(y ~ x1 + x2 + x3)
 vif(fit)
 ```
 
