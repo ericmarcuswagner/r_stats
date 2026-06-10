@@ -141,7 +141,7 @@ wilcox.test(lap, open, paired = FALSE, exact = FALSE)
 * Non-parametric to the One-way ANOVA
 * Compares the medians/distributions across three or more independent groups
 * Assumes ordinal or continuous dependent variable, independent groups
-* Cionare fatigue ratings among nurses across three different shifts
+* Example: Compare fatigue ratings among nurses across three different shifts
 
 ```{r}
 n <- 25
@@ -356,109 +356,159 @@ vif(fit)
 ### Simple Linear Regression
 * Models the linear relationship between one continuous dependent variables and one independent variable
 * Assumes linearity, independence of observations, homoscedasticity, and normality of residuals
+* Example: Predicting arterial stiffness (pulse wave velocity, m/s), based on age
 
 ```{r}
-x <- runif(50, 100, 1000)
-y <- 10 + 0.05 * x + rnorm(50, 0, 5)
+age <- runif(60, 30, 80)
+pwv <- 3.5 + 0.12 * age + rnorm(60, 0, 1.1)
+df <- data.frame(age, pwv)
 
-fit <- lm(y ~ x)
+fit <- lm(pwv ~ age, data = df)
 summary(fit)
 ```
 
 ### Multiple Linear Regression
 * Models the relationship between one continuous dependent variable and two or more independent variables
 * Assumes linearity, independence, homoscedasticity, normality of residuals, and limited multicolllinearity among independent variables
+* Predicting birth weight (grams) using gestational age (weeks), maternal pre-pregnancy BMI, and maternal smoking status (Yes/No)
 
 ```{r}
-a <- rnorm(100, 3000, 500)
-b <- rnorm(100, 3, 1)
-y <- 50 - 0.005 * a - 2.5 * b + rnorm(100, 0, 3)
+gest_age <- rnorm(100, 39, 1.5)
+bmi <- rnorm(rnorm(100, 24, 4.5)
+smoke <- factor(rbinom(100, 1, 0.25), labels = c('Non-Smoker', 'Smoker'))
+weight <- 150 * gest_age + 15 * bmi - 250 * (as.numeric(smoke) - 1) + rnorm(100, 0, 200)
+df <- data.frame(weight, gest_age, bmi, smoke)
 
-fit <- lm(y ~ a + b)
+fit <- lm(weight ~ gest_age + bmi + smoke, data = df)
 summary(fit)
 ```
 
 ### Polynomial Regression
 * Used when the relationship between the independent and dependent variable is non-linear
 * Assumes independence of observations and normally distributed residuals
+* Example: Modeling the fall of viral load (copies/mL, log10 transformed) in blood serum over 14-day period following viral exposure
 
 ```{r}
-x <- seq(10, 100, length.out = 50)
-y <- -0.05 * (x - 55)^2 + 80 + rnorm(50, 0, 4)
+days <- runif(80, 1, 14)
+viral_load <- -0.15 * (days - 7.5)^2 + 6.5 + rnorm(80, 0, 0.5)
+df <- data.frame(days, viral_load)
 
-fit <- lm(y ~ poly(x, 2))
+fit <- lm(viral_load ~ ploy(days, 2), data = df)
 summary(fit)
 ```
 
 ### Logistic Regression
 * Models the probability of a binary categorical outcome based on one or more predictor variables
 * Assumes the outcome is binary, independent observations, little to no multicollinearity and a linear relationship between the log-odds of the outcome and the predictors
+* Example: Predicting patient survival based on clinical acute physiology score (APACHE II)
 
 ```{r}
-x <- rnorm(100, 50, 15)
-log_odds <- -5 + 0.1 * x
-prob <- 1 / (1 + exp(-log_odds))
-y <- rbinom(100, 1, prob)
+score <- rnorm(150, 20, 8)
+score <- pmax(pmin(score, 40), 0)
+log_odds_surv <- 4.5 - 0.22 * score
+prob_surv <- 1 / (1 + exp(-log_odds_surv))
+surv <- rbinom(150, 1, prob_surv)
+df <- data.frame(score, surv)
 
-fit <- glm(y ~ x, family = binomial)
+fit <- glm(surv ~ score, family = binomial)
 summary(fit)
 ```
 
 ### Poisson Regression
 * Used for modeling count data, representing the number of events occurring in a fixed period/space
 * Assumes the dependent variable consists of non-negative integers and equidisperion (equal dependent variable mean and variable)
+* Example: Modeling annual asthma attacks based on local Air Quality Index exposure levels
 
 ```{r}
-x <- rnorm(60, 1000, 200)
-x <- ifelse(x < 100, 100, x)
-lambda <- exp(-2 + 0.003 * x)
-y <- rpois(60, lambda)
+aqi <- rnorm(80, 110, 30)
+lambda_asthma <- exp(-1.2 + 0.015 * aqi)
+asthma <- rpois(80, lambda_asthma)
+df <- data.frame(aqi, asthma)
 
-fit <- glm(y ~ x, family = poisson)
+fit <- glm(asthma ~ aqi, data = df, family = poisson)
 summary(poisson_model)
 ```
 
 ### Negative Binomial Regression
 * Alternative to Poisson when the variance is significantly greater than the mean
 * Assumes independent observations and models the outcome as a negative binomial distribution
+* Example: Modeling emergency room visits for chornic pain based on years smoking
 
 ```{r}
 library(MASS)
 
-x <- runif(100, 1, 10)
-lambda <- exp(1 + 0.2 * x)
-y <- rnbinom(100, 1.5, lambda)
+smoke <- runif(120, 10, 80)
+base_rate <- exp(-0.5 + 0.03 * smoke)
+visits <- rnbinom(120, 1.2, base_rate)
+df <- data.frame(smoke, visits)
 
-fit <- glm.nb(y ~ x)
+fit <- glm.nb(visits ~ smoke, data = df)
 summary(fit)
 ```
 
 ### Quantile Regression
 * Used instead of linear regression when there is heteroscedasticity or outliers
 * Estimates the conditional median or any other specified quantile instead of the mean
+* Example: Modeling the 10th percentile of premature infant birth weights (grams) based on maternal age
 
 ```{r}
 library (quantreg)
+
+age <- runif(150, 16, 42)
+var <- (age - 28)^2 * 10
+weight <- 3400 + 15 * age - rexp(150, 1/350) - var
+df <- data.frame(age, weight)
+
+quant_10 <- rq(weight ~ age, data = df, tau = 0.1)
+quant_50 <- rq(weight ~ age, data = df, tau = 0.5)
 ```
 
 ### Linear Mixed-Effects Model (LMM)
 * Analyzes grouped or nested observations, modeling both fixed effects (overall trends) and random effects (group-specific variation)
 * Assumes linear relationships and normally distributed residuals and random effects
+* Example: Tracking longitudinal rate of cognitive decline (MMSE score) over 5 years at different sites
 
 ```{r}
 library (lme4)
 
+n_sites <- 5
+n_per_site <- 15
+site_effect <- rnorm(n_site, 0, 3)
 
+df <- data.frame(
+  site_id = factor(rep(1:n_sites, each = n_per_site * 3)),
+  patient_id = factor(rep(1:(n_sites * n_per_site), each = 3)),
+  year = rep(0:2, times = n_sites * n_per_site)
+)
+
+baseline_mmse <- rnorm(n_sites * n_per_site, 24, 2.5)
+df$mmse <- baseline_mmse[as.numeric(df$patient_id)] -
+           2.1 * df$year +
+           site_effect[as.numeric(df$site_id)] +
+           rnorm(nrow(df), 0, 1.2)
+
+fit <- lmer(mmse ~ year + (1 | site_id), data = df)
+summary(fit)
 ```
 
 ### Lasso Regression
 * Regression technique that penalizes absolute size of coefficients, shrinking some to zero and functioning as an automated feature selection method
 * Assumes linear relationships, requires standardized variables, and useful for high-dimensional data sets
+* Example: Predicting a continuous diagnostic marker from a subset of genes
 
 ```{r}
 library(glmnet)
 
+genes <- matrix(rnorm(100 * 50), 100, 50)
+colnames(genes) <- paste0('gene_', 1:50)
+biomarker <- 12.5 + 4.2 * genes[, 1] - 3.5 * genes[, 5] +
+             2.8 * genes[, 12] - 1.9 * genes[, 30] +
+             rnorm(100, 0, 1)
 
+fit <- cv.glmnet(genes, biomarker, alpha = 1)
+selected <- coef(fit, s = 'lambda.min')
+summary(fit)
+print(selected)
 ```
 
 
