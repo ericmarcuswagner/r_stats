@@ -580,68 +580,77 @@ print(selected)
 ### Kaplan-Meier Estimator
 * Non-parametric statistic used to estimate the survival function from lifetime data
 * Assumes censoring is non-informative and the survival probability is the same for subjects recruited early and late in the study
+* Example: Estimating the cumulative probability of remaining cancer-free ove a 10-year/120-month period following surgery
 
 ```{r}
 library(survival)
 
-time <- rexp(100, 0.02)
-status <- rbinom(100, 1, 0.8)
+months_to_recurrence <- rexp(80, 0.015)
+months_to_recurrence <- pmin(months_to_recurrence, 120)
+status <- rbinom(80, 1, 0.6)
+status[months_to_recurrence ==120] <- 0
+df <- data.frame(months_to_recurrence, status)
 
-surv <- Surv(time, status)
-fit <- survfit(surv ~ 1)
-
-summary(fit)
-plot(fit)
+surv <- Surv(df$months_to_recurrence, df$status)
+fit <- survfit(surv ~ 1, data = df)
+plot(fit, mark.time = TRUE)
 ```
 
 ### Log-Rank Test
 * Non-parametric hypothesis test to compare the survival distributions of two or more independent groups
 * Assumes proportional hazards and non-informative censoring
+* Example: Comparing the survival curves of melanoma patients receiving chemotherapy alone vs a combo treatment
 
 ```{r}
 library(survival)
 
-a <- rexp(50, 0.05)
-b <- rexp(50, 0.02)
-time <- c(a, b)
-status <- rbinom(100, 1, 0.85)
-x <- factor(rep(c('A', 'B'), each = 50))
+time_chemo <- rexp(50, 0.08)
+time_combo <- rexp(50, 0.03)
+time <- c(time_chemo, time_combo)
+status <- rbinom(100, 1, prob = 0.85)
+treatment_type <- factor(rep(c('chemo', 'combo'), each = 50))
+df <- data.frame(time, status, treatment_type)
 
-fit <- survdiff(Surv(time, status) ~ x)
-summary(fit)
+fit <- survdiff(Surv(time, status) ~ treatment_type, data = df)
 ```
 
 ### Cox Proportional Hazards
 * Semi-parametric model used to evaluate simultaneously the effect of several variables (covariates) on survival time, estimating the hazard ratio (HR)
 * Assumes proportional hazards and a linear relationship between continuous predictors and the log hazard
+* Example: Calculating the hazard ratio of cardiac events associated with age, baseline systolic blood pressure, and smoking status over a 15-year longitudinal study
 
 ```{r}
 library(survival)
 
-a <- rbinom(150, 1, 0.5)
-b <- rnorm(150, 70, 10)
-rate <- exp(0.05 * (b - 70) - 0.8 * a)
-time <- rexp(150, 0.1 * rate)
-status <- rbinom(150, 1, 0.9)
+age <- rnorm(200, 60, 10)
+sbp <- rnorm(200, 135, 15)
+smoke <- rbinom(200, 1, 0.3)
+hazard <- exp(0.04 * (age - 60) + 0.02 * (sbp - 135) + 0.8 * smoke
+time_to_event <- rexp(200, 0.005 * hazard)
+event <- ifelse(time_to_event <= 180, 1, 0)
+time_to_event <- pmin(time_to_event, 180)
+df <- data.frame(time_to_event, event, age, sbp, smoke)
 
-fit <- coxph(Surv(time, status) ~ a + b)
+fit <- coxph(Surv(time_to_event, event) ~ age + sbp + smoke, data = df)
 summary(fit)
-
-cox.zph(fit) # Tests Proportional Hazards assumption
+cox.zph(fit) # Proportional Hazards assumption (Schoenfeld Residuals)
 ```
 
 ### Parametric Survival Regression
 * Assumes the baseline survival times follow a specific distribution (e.g. Weibull, Exponential, Log-normal)
 * The Weibull distribution is widely used because it can model hazard rates that are increasing, decreasing, or constant
+* Example: Modeling the time until artificial heart valve implant failure
 
 ```{r}
 library(survival)
 
-x <- runif(100, 10, 100)
-time <- rweibull(100, 1.5, 1000/x)
-status <- rbinom(100, 1, 0.8)
+hr <- runif(100, 60, 100)
+implant_lifetime <- rweibull(100, 2, 1500 / hr)
+failure <- rbinom(100, 1, 0.9)
+df <- data.frame(implant_lifetime, failure, hr)
 
-fit <- survreg(Surv(time, status) ~ x, dist = 'weibull')
+fit <- survreg(Surv(implant_lifetime, failure) ~ hr, data = df, dist = 'weibull')
+summary(fit)
 ```
 
 
