@@ -666,54 +666,62 @@ summary(fit)
 ### Decision Trees
 * Non-parametric model that splits data into branch-like structures based on feature values
 * Highly interpretable, handles both continuous and categorical variables natively, and makes no distribution assumptions, but prone to overfitting without pruning
+* Example: Classifying patients into high or low risk based on age and biomarker levels
 
 ```{r}
 library(rpart)
 library(rpart.plot)
 
-x1 <- runif(150, 1, 10)
-x2 <- runif(150, 1, 5)
-prob <- 1 / (1 + exp(-(-6 + 1.2 * x2 + 0.4 * x1)))
-y <- factor(rbinom(150, 1, prob), levels = c(0, 1), labels = c('No', 'Yes'))
+age <- runif(150, 35, 85)
+biomarker <- rexp(150, 0.5)
+log_odds <- -8 + 0.08 * age + 2.5 * biomarker
+prob <- 1 / (1 + exp(-log_odds)
+risk <- factor(ifelse(rbinom(150, 1, prob) == 1, 'High Risk', 'Low Risk'))
+df <- data.frame(age, biomarket, risk)
 
-fit <- rpart(y ~ x1 + x2, method = 'class')
-summary(fit)
-rpart.plot(fit)
+tree <- rpart(risk ~ age + biomarker, data = df, method = 'class')
+
+print(tree)
+rpart.plot(tree, extra = 104)
 ```
 
 ### Random Forest
 * Ensemble of decision trees trained on boostrapped subsets of the data (bagging) with random feature selection
 * Robust to overfitting, noise, and outliers
 * Handles high-dimensional data and non-linear relationships, with no distribution on assumptions, but features should not have extreme class imbalances without adjustment
+* Example: Predicting type-2 diabetes using fasting blood glucose, BMI, and age
 
 ```{r}
 library(randomForest)
 
-x1 <- rnorm(200, 50000, 15000)
-x2 <- rnorm(200, 10000, 5000)
-x3 <- rnorm(200, 20000, 8000)
-score <- x1 * 0.5 + x2 * 0.8 + x3 * 0.5
-y <- factor(ifelse(score > 15000), 'Low', 'High')
+glucose <- rnorm(250, 100, 20)
+bmi <- rnorm(250, 28, 6)
+age <- runif(250, 20, 80)
+risk <- glucose * 0.4 + bmi * 1.5 + age * 0.2
+status <- factor(ifelse(risk > 95, 'diabetic', 'healthy'))
+df <- data.frame(glucose, bmi, age, status)
 
-fit <- randomForest(y ~ x1 + x2 + x3, ntree = 100, importance = TRUE)
-summary(fit)
+fit <- randomForest(status ~ glucose + bmi + age, data = df, ntree = 200, importance = TRUE)
+print(fit)
 importance(fit)
+varImpPlot(fit)
 ```
 
 ### Support Vector Machines (SVM)
 * Finds the optimal hyperplane that maximizes the distance between different classes in a high-dimensional space
 * Utilizes the "kernal trick"
 * Sensitive to feature scaling, so continuous predictors should be standardized before fitting
+* Example: Classifying tissue biopsies as benign or malignant based on cell metrics
 
 ```{r}
 library(e1071)
 
-x1 <- runif(200, -2, 2)
-x2 <- runif(200, -2, 2)
-y <- factor(ifelse(x1^2 + x2^2 < 1, 'A', 'B'))
-df <- data.frame(x1, x2, y)
+a <- runif(200, 10, 30)
+b <- runif(200, 10, 30)
+class <- factor(ifelse((a - 20)^2 + (b - 20)^2 > 40, 'malignant', 'benign'))
+df <- data.frame(a, b, class)
 
-fit <- svm(y ~ x1 + x2, data = df, kernel = 'radial', scale = TRUE)
+fit <- svm(class ~ a + b, data = df, kernel = 'radial', scale = TRUE)
 summary(fit)
 plot(fit, df)
 ```
@@ -722,41 +730,43 @@ plot(fit, df)
 * Ensemble technique that builds weak decision trees sequentially
 * Flexible but prone to overfitting if parameters are not tuned properly
 * Requires the training data to be structured as a numeric matrix and the categorical target variables must be encoded numerically
+* Example: Predicting the continuous 30-day readmission risk score of heart failure patients using systolic blood pressure and ejection fraction
 
 ```{r}
 library(xgboost)
 
-x1 <- runif(150, 5, 50)
-x2 <- rnorm(150, 75, 10)
-y <- 10 + 0.8 * x1 + 0.6 * x2 + rnorm(150, 0, 5)
+ef <- runif(150, 15, 65)
+sbp <- rnorm(150, 130, 20)
+risk <- 100 - 1.2 * ef + 0.3 * abs(sbp - 120) + rnorm(150, 0, 5)
+pred <- as.matrix(ef, sbp))
+target <- risk
 
-pred_mat <- as.matrix(data.frame(x1, x2))
-
-fit <- xgboost(data = pred_mat, label = y, nrounds = 50, objective = 'reg:squarederror', verbose = 0)
-summary(fit)
+fit <- xgboost(pred, target, nrounds = 50, objective = 'reg:squarederror', verbose = 0)
+print(fit)
 ```
 
 ### K-Nearest Neighbors (KNN)
 * Instance based learner that classifies a data point based on the majority vote of its closest neighbors in the feature space
 * Non-parametric and simple
-* Assumes similar data points reside near one another and features must be scaled/normalized 
+* Assumes similar data points reside near one another and features must be scaled/normalized
+* Example: Classifying patient gait abnormalities based on stride length (cm) and cadence (steps/min)
 
 ```{r}
 library(class)
 
-x1 <- runif(120, 10, 90)
-x2 <- runif(120, 10, 90)
-y <- factor(ifelse(x1 > x2, 'A', 'B'))
-df <- scale(data.frame(x1, x2))
+stride <- runif(120, 40, 90)
+cadence <- runif(120, 60, 130)
+gait <- factor(ifelse(stride < 60 & cadence < 90, 'pathological', 'healthy'))
+scaled_df <- scale(data.frame(stride, cadence))
+train_index <- 1:96
+test_index <- 97:120
 
-train_ind <- 1:96 # sample 70%
-test_ind <- 97:120
-
-fit <- knn(train = df[train_ind, ],
-           test = df[test_ind, ],
-           cl = y[train_ind],
-           k = 5)
-table(Actual = y[test_ind], Predicted = fit)
+pred <- knn(train = scaled_df[train_index, ], 
+            test = scaled_df[test_index, ],
+            cl = gait[train_index, ],
+            k = 5
+)
+table(Actual = gait[test_index], Predicted = pred)
 ```
 
 
