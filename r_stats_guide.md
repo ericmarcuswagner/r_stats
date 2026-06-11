@@ -772,52 +772,61 @@ table(Actual = y[test_ind], Predicted = fit)
 ### K-Means Clustering
 * Partitions data into pre-defined, non-overlapping clusters by minimizing the sum of squared distances between data points and their cluster
 * Assumes clusters are spherical, of similar size, and the features are continuous and standardized
+* Example: Grouping patients into subtypes based on heart rate, respiration rate, and oxygen saturation
 
 ```{r}
-c1 <- data.frame(X = rnorm(50, 2, 0.5), Y = rnorm(50, 2, 0.5))
-c2 <- data.frame(X = rnorm(50, 8, 0.6), Y = rnorm(50, 8, 0.6))
-c3 <- data.frame(X = rnorm(50, 5, 0.5), Y = rnorm(50, 12, 0.5))
-df <- rbind(c1, c2, c3)
-scaled_df(df)
+a <- data.frame(hr = rnorm(50, 75, 5),
+                     rr = rnorm(50, 14, 2),
+                     os = rnorm(50, 98, 1)
+)
+b <- data.frame(hr = rnorm(50, 110, 8),
+                     rr = rnorm(50, 24, 3),
+                     os = rnorm(50, 92, 2)
+)
+c <- data.frame(hr = rnorm(50, 55, 4),
+                     rr = rnorm(50, 10, 1),
+                     os = rnorm(50, 95, 2)
+)
+df <- rbind(a, b, c)
+scaled_df <- scale(df)
 
 fit <- kmeans(scaled_df, centers = 3, nstart = 25)
-plot(df, col = fit$cluster, pch = 19)
+plot(df$hr, df$rr, pch = 19)
 points(fit$centers * attr(scaled_df, 'scaled:scale') + attr(scaled_df, 'scaled:center'), col = 1:3, pch = 4, cex = 2, lwd = 3)
 ```
 
 ### Hierarchical Clustering
 * Builds a tree-like hierarchy of clusters (dendrogram) by sequentially merging smaller clusters based on proximity and doesn't require a pre-specified number of clusters
 * Requires a distance metric and linkage criteria are chosen and standardized features
+* Example: Group 15 pathogenic bacterial strains based on genomic expression profiles to trace the source of the outbreak
 
 ```{r}
-df <- data.frame(
-  x1 = rnorm(15, mean = c(10, 20, 30), sd = 2),
-  x2 = rnorm(15, mean = c(50, 40, 60), sd = 3)
-)
-row.names(df) <- paste('ID', 1:15, sep = '_')
-scaled_df <- scale(df)
-dist_mat <- dist(scaled_df, method = 'euclidean')
+genes <- matrix(rnorm(15 * 5, 50, 10), nrow = 15, ncol = 5)
+genes[1:5, ] <- genes[1:5, ] + 20   # Cluster A
+genes[6:10, ] <- genes[6:10, ] - 15 # Cluster B
+row.names(genes) <- paste('strain_', 1:15, sep = '_')
+dist <- dist(scale(genes), method = 'euclidean')
 
-fit <- hclust(dist_mat, method = 'ward.D2')
-plot(fit)
-rect.hclust(fit, k = 3)
+hclust <- chlust(dist, method = 'ward.D2')
+plot(hclust, hang = -1)
+rect.hclust(hchlust, k = 3, border = 'red')
 ```
 
 ### Principal Component Analysis (PCA)
 * Dimensionality reduction technique that transforms a set of correlated variables into a smaller set of linearly uncorrelated variables
 * Assumes linear relationships among features and must standardize features
+* Examples: Reducing 50 different biomarkers to capture the overall inflamation score
 
 ```{r}
-a <- rnorm(100, 25, 5)
-b <- 100 - 2 * x1 + rnorm(100, 0, 2)
-c <- 1000 - 0.5 * x1 + rnorm(100, 0, 1)
-d <- runif(100, 5, 25)
-df <- data.frame(a, b, c, d)
+biomarkers <- data.frame(matrix(rnorm(100 * 50, 10, 2), nrow = 100))
+inf <- rnorm(100, 5, 3)
+for(i in 1:10) {
+  biomarkers[, i] <- biomarkers[, i] + inf * 1.5
+}
 
-fit <- prcomp(df, center = TRUE, scale. = TRUE)
-summary(fit)
-
-biplot(fit)
+pca <- prcomp(biomarkers, center = TRUE, scale. = TRUE)
+summary(pca)
+plot(pca$x[, 1], pca$x[, 2], pch = 19, col = 'darkblue')
 ```
 
 
@@ -833,9 +842,20 @@ biplot(fit)
 ### Auto-Regressive Integrated Moving Average (ARIMA)
 * Forecasts univariate time-series data by modeling auto-regressive (AR) components, differencing (I) to achieve stationarity, and moving average (MA) errors
 * Data must be stationary (constant mean, variance, and autocorrelation) or made stationary through differencing
+* Example: Forecasting weekly influenza admmissions for winter season based on past five years
 
 ```{r}
+weeks <- 1:260
+baseline_admissions <- 20
+flu <- 15 * sin(2 * pi * weeks / 52)
+noise <- arima.sim(model = list(ar = 0.5), n = 260) * 3
+weekly_admissions <- pmax(round(baseline_admissions + flu + noise), 0)
 
+ts <- ts(weekly_admissions, start = c(2019, 1), freq = 52)
+fit <- arima(ts, order = c(1, 0, 1), seasonal = list(order = c(1, 0, 0), period = 52))
+summary(fit)
+pred <- predict(fit, n.ahead = 12)
+round(pred$pred)
 ```
 
 ### 
