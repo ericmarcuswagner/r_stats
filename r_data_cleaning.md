@@ -112,7 +112,9 @@ df <- df |>
 
 
 
+
 # Missing Data
+
 
 
 
@@ -172,23 +174,71 @@ df <- complete(imputed)
 
 
 
-### Deriving Scores
+### Factor Releveling
+* Ensures model compares treatments against baseline (rather than alphabetical)
 
 ```{r}
+library(forcats)
+library(dplyr)
 
+df <- df |>
+  mutate(
+    treatment = factor(treatment) |>
+      fct_relevel('Placebo', 'Drug_A', 'Drug_B')
+  )
+```
+
+### Deriving Scores
+* Combines basic measurements into established figures
+
+```{r}
+library(dplyr)
+
+df <- df |>
+  mutate(
+    mean_arterial_pressure = dbp + (1/3) * (sbp - dbp)
+  )
 ```
 
 ### Binning/Discretization
+* Converts continuous to categorical
 
 ```{r}
+library(dplyr)
 
+df <- df |>
+  mutate(
+    age_group = case_when(
+      age < 18 ~ 'pediatric',
+      age >= 18 & age < 65 ~ 'adult',
+      age >= 65 ~ 'geriatric'
+    )
+  )
 ```
 
 ### Skewness Transformation
+* Transforms commonly skewed data
 
 ```{r}
-log10(), recipes::step_YeoJohnson()
+library(dplyr)
+
+df <- df |>
+  mutate(
+    cost_log10() = log10(col_1 + 1)
+  )
+
+recipes::step_YeoJohnson()
 ```
+
+
+
+
+
+# Feature Selection
+
+
+
+
 
 ### Remove Near-Zero Variance Features
 
@@ -207,6 +257,16 @@ cor(), corrplot::corrplot(), recipes::step_corr()
 ```{r}
 prcomp(), recipes::step_pca()
 ```
+
+
+
+
+
+# ML Preprocessing
+
+
+
+
 
 ### Dummy Encoding (One-Hot)
 
