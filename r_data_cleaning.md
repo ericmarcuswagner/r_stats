@@ -118,28 +118,59 @@ df <- df |>
 
 
 ### Missing Value Diagnostics
+* Determines if there's enough data to proceed or if certain variables should be discarded
 
 ```{r}
-naniar::vis_miss(), gg_miss_upset()
+library(naniar)
+
+vis_miss(df)
+gg_miss_upset(df)
 ```
 
 ### Feature/Obsveration Dropping
+* Drops columns that are too noisy to impute (>40%) or patients missing the primary outcome
 
 ```{r}
-dplyr::select(), tidyr::drop_na()
+library(dplyr)
+library(tidyr)
+
+df <- df |>
+  drop_na(survival_status) |>
+  select_if(~ sum(is.na(.)) / length(.) < 0.4)
 ```
 
 ### Longitudinal Imputation
+* Carries forward the value from the previous observation/measurement
 
 ```{r}
+library(tidyr)
 
+df <- df |>
+  arrange(patient_id, date) |>
+  group_by(patient_id) |>
+  fill(col_1, .direction = 'down') |>
+  ungroup()
 ```
 
 ### Cross-Sectional Imputation
+* Predicts/imputs missing values
 
 ```{r}
+library(mice)
 
+imputed <- mice(df, m = 1, method = 'pmm', printFlag = FALSE)
+df <- complete(imputed)
 ```
+
+
+
+
+
+# Feature Engineering
+
+
+
+
 
 ### Deriving Scores
 
