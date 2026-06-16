@@ -7,31 +7,70 @@ date: "2026-06-03"
 
 
 
+
+# Structural Tidying
+
+
+
+
+
 ### Standardizing Column Names
+* Converts everything to snake_case
 
 ```{r}
 library(janitor)
 
-clean_names()
+df <- df |>
+  clean_names()
 ```
 
-### Correct Date Types
+### Standardizing Missing Values
+* Changes missing data like 999 and "Unknown" to formal NA values
 
 ```{r}
-dplyr::mutate(), lubridate::ymd()
+library(dplyr)
+
+df <- df |>
+  mutate(
+    col_1 = na_if(col_1, 999),
+    col_2 = na_if(col_2, 'Unknown')
 ```
 
-### Missing Values
+### Date Types & Math
+* Converts string dates to formal date objects and calculates durations
 
 ```{r}
-dplyr::na_if()
+library(lubridate)
+
+df <- df |>
+  mutate(
+    col_1 = ymd(col_1)
+    col_2 = as.numeric(difftime(col_3, col_4, unit = 'days)) / 365
+  )
 ```
 
 ### Removing Duplicates
+* For cross-sectional studies where you just want the first visit, or when there are dupe-errors
 
 ```{r}
-dplyr::distinct(), slice_min()
+library(dplyr)
+
+df <- df |>
+  arrange(date) |>
+  group_by(patient_id) |>
+  slice_min(order_by = date, n = 1, with_ties = FALSE) |>
+  ungroup()
 ```
+
+
+
+
+
+# Outliers
+
+
+
+
 
 ### Sanity Checks
 
