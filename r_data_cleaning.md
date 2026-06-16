@@ -241,21 +241,35 @@ recipes::step_YeoJohnson()
 
 
 ### Remove Near-Zero Variance Features
+* Drops features with no variance
 
 ```{r}
-caret::nearZeroVar(), recipes::step_nzv()
+library(caret)
+
+nzv <- nearZeroVar(df)
+if(length(nzv) > 0) df <- df[, -nzv]
 ```
 
 ### Assess Multicollinearity
+* Finds and removes one of the pair
 
 ```{r}
-cor(), corrplot::corrplot(), recipes::step_corr()
+library(caret)
+library(corrplot)
+
+cor_mat <- cor(df |> select(where(is.numeric)), use = 'complete.obs')
+corrplot(cor_mat, method = 'circle')
+
+high_cor <- findCorrelation(cor_mat, cutoff = 0.9)
+if(length(high_cor) > 0 df <- df[, -high_cor]
 ```
 
 ### Dimensionality Reduction
+* Compress variables into a handful of important ones
 
 ```{r}
-prcomp(), recipes::step_pca()
+pca <- prcomp(df |> select(starts_with('col_')), center = TRUE, scale. = TRUE)
+df_pca <- as.data.frame(pca$x[, 1:3])
 ```
 
 
@@ -269,33 +283,51 @@ prcomp(), recipes::step_pca()
 
 
 ### Dummy Encoding (One-Hot)
+* Converts text to numeric for ML algorithms
 
 ```{r}
+library(fastDummies)
+
+df <- dummy_cols(df, select_columns = c('col_1', 'col_2'), remove_first_dummy = TRUE)
+
 fastDummies, recipes::step_dummy()
 ```
 
 ### Variable Standardization
+* Forces all continuous variables to 0 mean and 1 standard deviation
 
 ```{r}
-scale(), recipes::step_normalize()
+libary(dplyr)
+
+df <- df |>
+  mutate(across(where(is.numeric), ~ scale(.)[,1]))
 ```
 
 ### Class Imbalance
+* Use when predicting rare outcomes
 
 ```{r}
-themis::step_smote(), step_downsample()
+library(ROSE)
+
+df <- ovun.sample(status ~ ., data = df, method = 'both', N = nrow(df)$data)
 ```
 
 ### Train/Test Split
+* Splits data into training and testing sets
 
 ```{r}
-rsample::initial_split(strata = Target)
+library(rsample)
+
+split <- initial_split(df, prop = 0.7, strata = status)
 ```
 
 ### CV Folds
+* Splits training data into chunks to tune hyperparameters
 
 ```{r}
-rsample:vfold_cv(v = 10, strata = Target)
+library(rsample)
+
+cv_folds <- vfold_cv(train_data, v = 10, strata = status)
 ```
 
 
