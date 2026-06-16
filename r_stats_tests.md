@@ -1,5 +1,5 @@
 ---
-title: "Statistical Tests in R"
+title: "Statistical Tests & Machine Learning in R"
 output: html_document
 date: "2026-06-03"
 ---
