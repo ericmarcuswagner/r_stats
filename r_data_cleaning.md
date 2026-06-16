@@ -73,22 +73,49 @@ df <- df |>
 
 
 ### Sanity Checks
+* Catching data entry typos
 
 ```{r}
-rplyr::case_when(), assertr
+library (dplyr)
+
+df <- df |>
+  mutate(
+    sbp = case_when(
+      sbp < 40 | sbp > 300 ~ NA_real_,
+      TRUE ~ bsp
+    )
+  )
 ```
 
 ### Outlier Detection
+* Displaying the distribution of variables to spot extreme outliers
 
 ```{r}
-boxplot.stats(), skimr::skim()
+library(skimr)
+
+skim(df)
+(outliers <- boxplot.stats(df$col_1)$out)
 ```
 
 ### Outlier Treatment
+* Cap values of extreme values to keep them in the study without negatively affecting the regression line
 
 ```{r}
-DescTools::Winsorize(), recipes::step_percentile()
+library(DescTools)
+
+df <- df |>
+  mutate(
+    col_1_win = Winsorize(col_1, probs = c(0.05, 0.95))
+  )
 ```
+
+
+
+
+# Missing Data
+
+
+
 
 ### Missing Value Diagnostics
 
